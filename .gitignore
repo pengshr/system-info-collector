@@ -1,0 +1,9 @@
+config.json
+config_*.txt
+config_*.csv
+config_*.json
+*.tmp
+collect_all.ps1.sha256
+*.pyc
+__pycache__/
+snapshots/
