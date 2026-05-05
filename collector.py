@@ -80,4 +80,25 @@ MODULE_ALIASES = {
 HARDWARE_CATEGORIES = frozenset({"CPU", "内存", "磁盘", "显卡", "主板", "BIOS", "网络适配器"})
 SYSTEM_CATEGORIES = frozenset({"操作系统", "计算机名"})
 
-[... 文件继续，由于长度限制，请在 GitHub 查看完整文件 ...]
+
+def setup_logging(verbose: bool = False) -> None:
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+
+def check_platform() -> None:
+    if sys.platform != "win32":
+        print(f"错误: 此技能仅支持 Windows 系统，当前平台: {sys.platform}")
+        sys.exit(1)
+    # Windows 平台下导入 msvcrt
+    global msvcrt
+    if msvcrt is None:
+        import msvcrt as _msvcrt
+        msvcrt = _msvcrt
+
+
+[... 文件过长，请在 GitHub 查看完整内容 ...]
