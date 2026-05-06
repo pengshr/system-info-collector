@@ -1,6 +1,6 @@
 ---
 name: "system-info-collector"
-description: "Collects and caches Windows PC configuration (CPU, RAM, disk, OS, GPU). Invoke when user asks about computer specs, system info, hardware details, or configuration queries."
+description: "Collects and caches Windows PC configuration (CPU, RAM, disk, OS, GPU, battery, temperature, performance, processes, software). Invoke when user asks about computer specs, system info, hardware details, or configuration queries."
 ---
 
 # System Information Collector - 电脑配置信息采集器
@@ -21,6 +21,10 @@ description: "Collects and caches Windows PC configuration (CPU, RAM, disk, OS, 
 - 我的电脑 / 这台电脑 / 本机
 - 查看配置 / 配置参数 / 硬件参数
 - 运行内存 / 存储空间 / 可用空间
+- 电池 / 电量 / 充电
+- 温度 / 散热 / 发热
+- 性能 / 使用率 / 负载
+- 进程 / 运行程序
 
 ### 英文触发词
 - PC specs / system info / hardware info / computer specs
@@ -37,6 +41,8 @@ description: "Collects and caches Windows PC configuration (CPU, RAM, disk, OS, 
 6. "显卡是什么型号？"
 7. "显示本机配置信息"
 8. "What are my computer specs?"
+9. "电池还剩多少？"
+10. "CPU温度多少？"
 
 ## 使用方法
 
@@ -85,6 +91,11 @@ python collector.py --json --no-anonymize
 ### 8. 智能查询（按模块/字段精确查询）
 ```
 python collector.py --query CPU
+python collector.py --query 电池
+python collector.py --query 温度
+python collector.py --query 性能
+python collector.py --query 进程
+python collector.py --query 软件
 python collector.py --query 内存.total_gb
 python collector.py --query 显卡.gpus.0.name
 python collector.py --query os
@@ -95,7 +106,7 @@ python collector.py --query os
 ```
 python collector.py --health
 ```
-综合评估磁盘空间、内存容量、CPU 核心数、显卡显存、系统运行时间等指标，给出 0-100 分评分和改进建议。
+综合评估磁盘空间、内存容量、CPU 核心数、显卡显存、系统运行时间、实时性能、温度、电池等指标，给出 0-100 分评分和改进建议。
 
 ### 10. 保存配置快照
 ```
@@ -156,6 +167,11 @@ python collector.py --query-multi CPU 内存.total_gb 显卡.gpus.0.name
 | 主板 | 制造商、型号、序列号(默认脱敏)、版本 |
 | BIOS | 制造商、名称、版本、发布日期、序列号(默认脱敏) |
 | 网络适配器 | 名称、MAC地址(默认脱敏)、速度、类型 |
+| 🆕 电池 | 设备名、化学类型、剩余电量、充电状态、设计容量 |
+| 🆕 温度传感器 | 传感器名称、当前温度(°C) |
+| 🆕 性能计数器 | CPU使用率、内存使用率、磁盘活动时间、磁盘队列 |
+| 🆕 运行进程 | Top 20 内存占用进程(PID/内存/CPU时间) |
+| 🆕 已安装软件 | 软件名称、版本、发行商、安装日期 |
 
 ## 隐私与安全
 
@@ -195,10 +211,15 @@ python collector.py --query-multi CPU 内存.total_gb 显卡.gpus.0.name
   操作系统: Microsoft Windows 11 专业版
   CPU: Intel(R) Core(TM) i7-12700H
       核心数: 14 / 线程数: 20
+      CPU 使用率: 12%
   内存: 32.0 GB
   磁盘: 总计 512.0 GB / 可用 256.5 GB
   显卡: NVIDIA GeForce RTX 3060
-  采集时间: 2026-04-29 12:00:00
+  电池: 95%（接入电源）
+  进程: 128 个运行中
+  软件: 245 个已安装
+  温度: ACPI\ThermalZone = 45.3°C
+  采集时间: 2026-05-06 12:00:00
 ───────────────────────────────────────
   提示: 刷新配置请使用 --refresh 参数
 ═══════════════════════════════════════
@@ -212,3 +233,6 @@ python collector.py --query-multi CPU 内存.total_gb 显卡.gpus.0.name
 4. **零依赖**: 无需安装任何第三方 Python 包
 5. **轻量快速**: 首次采集约2-3秒（批量PowerShell调用），缓存读取<0.1秒
 6. **隐私保护**: 默认启用敏感字段脱敏，使用 `--no-anonymize` 可查看原始数据
+7. **安全增强**: HMAC Salt 支持环境变量配置，导入功能路径遍历保护
+8. **温度采集**: 需 ACPI 支持，部分台式机可能不支持 `MSAcpi_ThermalZoneTemperature`
+9. **软件列表**: 从注册表 Uninstall 键读取，可能包含系统组件

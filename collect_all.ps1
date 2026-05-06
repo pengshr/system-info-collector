@@ -14,6 +14,11 @@ $result = @{
     motherboard = $null
     bios = $null
     network = $null
+    battery = $null
+    temperature = $null
+    processes = $null
+    software = $null
+    performance = $null
 }
 
 # C-3: Each query wrapped in try/catch for granular error handling
@@ -65,6 +70,43 @@ try {
     Write-Warning "Win32_NetworkAdapter 查询失败: $_"
 }
 
+try {
+    $result.battery = Get-CimInstance Win32_Battery | Select-Object Name,EstimatedChargeRemaining,EstimatedRunTime,BatteryStatus,DesignCapacity,Chemistry
+} catch {
+    Write-Warning "Win32_Battery 查询失败: $_"
+}
+
+try {
+    $result.temperature = Get-CimInstance MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" -ErrorAction SilentlyContinue | Select-Object InstanceName,CurrentTemperature
+} catch {
+    Write-Warning "温度传感器查询失败: $_"
+}
+
+try {
+    $result.processes = Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 20 Name,Id,WorkingSet64,CPU,ProcessName,StartTime
+} catch {
+    Write-Warning "进程查询失败: $_"
+}
+
+try {
+    $result.software = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* 2>$null | Where-Object { $_.DisplayName -and $_.DisplayName -ne '' } | Select-Object DisplayName,DisplayVersion,Publisher,InstallDate | Sort-Object DisplayName
+} catch {
+    Write-Warning "已安装软件查询失败: $_"
+}
+
+try {
+    $cpuPerf = Get-CimInstance Win32_Processor | Select-Object LoadPercentage
+    $osPerf = Get-CimInstance Win32_OperatingSystem | Select-Object FreePhysicalMemory,TotalVisibleMemorySize,FreeSpaceInPagingFiles,TotalVirtualMemorySize,FreeVirtualMemory
+    $diskPerf = Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk | Where-Object Name -eq '_Total' | Select-Object PercentDiskTime,AvgDiskQueueLength
+    $result.performance = @{
+        cpu = $cpuPerf
+        memory = $osPerf
+        disk = $diskPerf
+    }
+} catch {
+    Write-Warning "性能计数器查询失败: $_"
+}
+
 # L-5: Safe arithmetic with null checks for disk summary
 $summary = @{
     cpuName = $null
@@ -111,9 +153,32 @@ if ($result.gpu) {
     }
 }
 
+if ($result.battery) {
+    $b = @($result.battery)
+    if ($b.Count -gt 0 -and $b[0]) {
+        $summary.batteryCharge = $b[0].EstimatedChargeRemaining
+        $summary.batteryStatus = $b[0].BatteryStatus
+        $summary.batteryChemistry = $b[0].Chemistry
+    }
+}
+
+if ($result.processes) {
+    $summary.runningProcesses = @($result.processes).Count
+    $summary.memTopProcess = ($result.processes | Select-Object -First 1).ProcessName
+    $summary.memTopProcessMB = if ($summary.memTopProcess) { [math]::Round(($result.processes | Select-Object -First 1).WorkingSet64 / 1MB, 1) } else { $null }
+}
+
+if ($result.software) {
+    $summary.installedApps = @($result.software).Count
+}
+
+if ($result.performance -and $result.performance.cpu) {
+    $summary.cpuUsage = $result.performance.cpu.LoadPercentage
+}
+
 $output = @{
     data = $result
     summary = $summary
 }
 
-$output | ConvertTo-Json -Depth 4 -Compress
+$output | ConvertTo-Json -Depth 10 -Compress
