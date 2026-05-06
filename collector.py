@@ -20,6 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
+# Windows 专有模块，延迟导入以支持跨平台检查
 msvcrt = None
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,12 @@ TIMEOUT_POWERSHELL = 15
 TIMEOUT_WMIC = 10
 TIMEOUT_BATCH = 30
 CACHE_EXPIRY_HOURS = 24
+# HMAC 盐值：优先从环境变量读取，否则使用机器特定标识生成
 def _get_hmac_salt() -> bytes:
     env_salt = os.getenv("SYSTEM_INFO_HMAC_SALT")
     if env_salt:
         return env_salt.encode()
+    # 使用计算机名 + 用户名生成确定性盐值
     machine_id = f"{platform.node()}-{os.getlogin() if hasattr(os, 'getlogin') else 'default'}"
     return hashlib.sha256(machine_id.encode()).digest()
 
@@ -88,3 +91,5 @@ MODULE_ALIASES = {
 
 HARDWARE_CATEGORIES = frozenset({"CPU", "内存", "磁盘", "显卡", "主板", "BIOS", "网络适配器", "电池", "温度传感器"})
 SYSTEM_CATEGORIES = frozenset({"操作系统", "计算机名", "进程", "已安装软件", "性能计数器"})
+
+# [CONTENT_TRUNCATED_FULL_FILE_UPLOAD]
